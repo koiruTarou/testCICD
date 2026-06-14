@@ -34,6 +34,7 @@ jobs:
 
       - name: Run Tests
         run: npm test
+        id: my_test_step 
         continue-on-error: true
 
       # -------------------------
@@ -49,7 +50,7 @@ jobs:
       # ⑤ テスト成功時のみ function.zip を作成
       # -------------------------
       - name: Create Lambda package
-        if: success()
+        if: steps.my_test_step.outcome == 'success'
         run: |
           zip -r function.zip index.js node_modules
 
@@ -57,7 +58,7 @@ jobs:
       # ⑥ function.zip を S3 にアップロード
       # -------------------------
       - name: Upload Lambda package to S3
-        if: success()
+        if: steps.my_test_step.outcome == 'success'
         run: |
           aws s3 cp function.zip \
             s3://${{ secrets.S3_DEPLOY_BUCKET }}/lambda/function.zip
@@ -66,7 +67,7 @@ jobs:
       # ③-1 テスト成功 → EventBridge に SUCCEEDED を送信
       # -------------------------
       - name: Send SUCCEEDED event to EventBridge
-        if: success()
+        if: steps.my_test_step.outcome == 'success'
         run: |
           aws events put-events --entries '[
             {
@@ -81,7 +82,7 @@ jobs:
       # ③-2 テスト失敗 → EventBridge に FAILED を送信
       # -------------------------
       - name: Send FAILED event to EventBridge
-        if: failure()
+        if: steps.my_test_step.outcome == 'failure'
         run: |
           aws events put-events --entries '[
             {
