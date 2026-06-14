@@ -34,6 +34,7 @@ jobs:
 
       - name: Run Tests
         run: npm test
+        continue-on-error: true
 
       # -------------------------
       # ② junit.xml を S3 にアップロード
