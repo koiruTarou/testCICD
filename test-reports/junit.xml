@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="jest tests" tests="2" failures="2" errors="0" time="0.338">
+  <testsuite name="Lambda response tests" errors="0" failures="2" skipped="0" timestamp="2026-06-14T05:29:17" time="0.26" tests="2">
+    <testcase classname="Lambda response tests createResponse が正しいレスポンスを返す" name="Lambda response tests createResponse が正しいレスポンスを返す" time="0.004">
+      <failure>Error: expect(received).toBe(expected) // Object.is equality
+
+Expected: &quot;Hello from CICD &quot;
+Received: &quot;Hello from RUIKO &quot;
+    at Object.toBe (C:\study\CICD\testCICD\__tests__\index.test.js:11:26)
+    at Promise.then.completed (C:\study\CICD\testCICD\node_modules\jest-circus\build\utils.js:298:28)
+    at new Promise (&lt;anonymous&gt;)
+    at callAsyncCircusFn (C:\study\CICD\testCICD\node_modules\jest-circus\build\utils.js:231:10)
+    at _callCircusTest (C:\study\CICD\testCICD\node_modules\jest-circus\build\run.js:316:40)
+    at _runTest (C:\study\CICD\testCICD\node_modules\jest-circus\build\run.js:252:3)
+    at _runTestsForDescribeBlock (C:\study\CICD\testCICD\node_modules\jest-circus\build\run.js:126:9)
+    at _runTestsForDescribeBlock (C:\study\CICD\testCICD\node_modules\jest-circus\build\run.js:121:9)
+    at run (C:\study\CICD\testCICD\node_modules\jest-circus\build\run.js:71:3)
+    at runAndTransformResultsToJestFormat (C:\study\CICD\testCICD\node_modules\jest-circus\build\legacy-code-todo-rewrite\jestAdapterInit.js:122:21)
+    at jestAdapter (C:\study\CICD\testCICD\node_modules\jest-circus\build\legacy-code-todo-rewrite\jestAdapter.js:79:19)
+    at runTestInternal (C:\study\CICD\testCICD\node_modules\jest-runner\build\runTest.js:367:16)
+    at runTest (C:\study\CICD\testCICD\node_modules\jest-runner\build\runTest.js:444:34)</failure>
+    </testcase>
+    <testcase classname="Lambda response tests handler が createResponse を返す" name="Lambda response tests handler が createResponse を返す" time="0.001">
+      <failure>Error: expect(received).toBe(expected) // Object.is equality
+
+Expected: &quot;Hello from CICD &quot;
+Received: &quot;Hello from RUIKO &quot;
+    at Object.toBe (C:\study\CICD\testCICD\__tests__\index.test.js:20:26)</failure>
+    </testcase>
+  </testsuite>
+</testsuites>

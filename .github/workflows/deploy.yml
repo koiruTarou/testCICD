@@ -23,16 +23,57 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ secrets.AWS_REGION }}
 
+      # -------------------------
+      # ① テスト実行
+      # -------------------------
       - name: Install dependencies
-        run: |
-          npm install
+        run: npm install
 
-      - name: Zip Lambda package
-        run: |
-          zip -r function.zip .
+      - name: Run Tests
+        run: npm test
 
-      - name: Deploy to Lambda
+      # -------------------------
+      # ② junit.xml を S3 にアップロード
+      # -------------------------
+      - name: Upload test report to S3
+        if: always()
         run: |
-          aws lambda update-function-code \
-            --function-name testLambda \
-            --zip-file fileb://function.zip
+          aws s3 cp test-reports/junit.xml \
+            s3://${{ secrets.S3_REPORT_BUCKET }}/test-reports/${{ github.run_id }}.xml
+      
+            # -------------------------
+      # ⑤ テスト成功時のみ function.zip を作成
+      # -------------------------
+      - name: Create Lambda package
+        if: success()
+        run: |
+          zip -r function.zip index.js node_modules
+
+      # -------------------------
+      # ⑥ function.zip を S3 にアップロード
+      # -------------------------
+      - name: Upload Lambda package to S3
+        if: success()
+        run: |
+          aws s3 cp function.zip \
+            s3://${{ secrets.S3_DEPLOY_BUCKET }}/lambda/function.zip
+
+      # -------------------------
+      # ③-1 テスト成功 → EventBridge に SUCCEEDED を送信
+      # -------------------------
+    c
+
+      # -------------------------
+      # ③-2 テスト失敗 → EventBridge に FAILED を送信
+      # -------------------------
+      - name: Send FAILED event to EventBridge
+        if: failure()
+        run: |
+          aws events put-events --entries '[
+            {
+              "Source": "cicd.tests",
+              "DetailType": "TestResult",
+              "Detail": "{\"status\":\"FAILED\"}",
+              "EventBusName": "default"
+            }
+          ]'
