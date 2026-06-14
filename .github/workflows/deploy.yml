@@ -82,13 +82,13 @@ jobs:
       # ③-2 テスト失敗 → EventBridge に FAILED を送信
       # -------------------------
       - name: Send FAILED event to EventBridge
-        if: steps.my_test_step.outcome == 'failure'
+        if: steps.my_test_step.outcome == 'failure'          
         run: |
-          aws events put-events --entries '[
-            {
-              "Source": "cicd.tests",
-              "DetailType": "TestResult",
-              "Detail": "{\"status\":\"FAILED\"}",
-              "EventBusName": "default"
-            }
-          ]'
+            aws events put-events --entries '[
+              {
+                "Source": "custom.github.actions",
+                "DetailType": "GitHub Action Build State Change",
+                "Detail": "{\"build-status\": [\"FAILED\"], \"project-name\": [\"${{ github.event.repository.name }}\"]}",
+                "EventBusName": "default"
+              }
+            ]'
