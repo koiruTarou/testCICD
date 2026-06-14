@@ -1,1 +1,23 @@
+version: 0.2
 
+phases:
+  install:
+    commands:
+      - echo Installing dependencies...
+      - npm install
+
+  build:
+    commands:
+      - echo Running tests...
+      - npm test
+
+reports:
+  jest_reports:
+    files:
+      - junit.xml
+    base-directory: test-reports
+    file-format: JUNITXML
+
+artifacts:
+  files:
+    - '**/*'
