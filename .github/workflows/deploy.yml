@@ -61,7 +61,17 @@ jobs:
       # -------------------------
       # ③-1 テスト成功 → EventBridge に SUCCEEDED を送信
       # -------------------------
-    c
+      - name: Send SUCCEEDED event to EventBridge
+        if: success()
+        run: |
+          aws events put-events --entries '[
+            {
+              "Source": "cicd.tests",
+              "DetailType": "TestResult",
+              "Detail": "{\"status\":\"SUCCEEDED\"}",
+              "EventBusName": "default"
+            }
+          ]'
 
       # -------------------------
       # ③-2 テスト失敗 → EventBridge に FAILED を送信
