@@ -71,8 +71,8 @@ jobs:
         run: |
           aws events put-events --entries '[
             {
-              "Source": "cicd.tests",
-              "DetailType": "TestResult",
+              "Source": "custom.github.actions",
+              "DetailType": "GitHub Action Build State Change",
               "Detail": "{\"status\":\"SUCCEEDED\"}",
               "EventBusName": "default"
             }
