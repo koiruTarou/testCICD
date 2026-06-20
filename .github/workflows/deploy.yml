@@ -73,7 +73,7 @@ jobs:
             {
               "Source": "custom.github.actions",
               "DetailType": "GitHub Action Build State Change",
-              "Detail": "{\"status\":\"SUCCEEDED\"}",
+              "Detail": "{\"build-status\":\"SUCCEEDED\",\"project-name\":\"testCICD\"}",
               "EventBusName": "default"
             }
           ]'
