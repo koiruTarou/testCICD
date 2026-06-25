@@ -1,7 +1,7 @@
 function createResponse() {
   return {
     statusCode: 200,
-    body: JSON.stringify({ message: "Hello from CICD"})
+    body: JSON.stringify({ message: "Hello from RUIKO"})
   };
 }
 
