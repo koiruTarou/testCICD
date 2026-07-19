@@ -8,7 +8,7 @@ describe('Lambda response tests', () => {
     expect(result.statusCode).toBe(200);
 
     const body = JSON.parse(result.body);
-    expect(body.message).toBe("Hello from CICD");
+    expect(body.message).toBe("Hello from GitHub_CICD");
   });
 
   test('handler が createResponse を返す', async () => {
@@ -17,7 +17,7 @@ describe('Lambda response tests', () => {
     expect(result.statusCode).toBe(200);
 
     const body = JSON.parse(result.body);
-    expect(body.message).toBe("Hello from CICD");
+    expect(body.message).toBe("Hello from GitHub_CICD");
   });
 
 });

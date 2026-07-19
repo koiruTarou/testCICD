@@ -13,6 +13,9 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
 
+    outputs:
+      test_outcome: ${{ steps.my_test_step.outcome }}
+
     steps:
       - name: Checkout source
         uses: actions/checkout@v5
@@ -46,38 +49,6 @@ jobs:
           aws s3 cp test-reports/junit.xml \
             s3://${{ secrets.S3_REPORT_BUCKET }}/test-reports/${{ github.run_id }}.xml
       
-            # -------------------------
-      # ⑤ テスト成功時のみ function.zip を作成
-      # -------------------------
-      - name: Create Lambda package
-        if: steps.my_test_step.outcome == 'success'
-        run: |
-          zip -r function.zip index.js node_modules
-
-      # -------------------------
-      # ⑥ function.zip を S3 にアップロード
-      # -------------------------
-      - name: Upload Lambda package to S3
-        if: steps.my_test_step.outcome == 'success'
-        run: |
-          aws s3 cp function.zip \
-            s3://${{ secrets.S3_DEPLOY_BUCKET }}/lambda/function.zip
-
-      # -------------------------
-      # ③-1 テスト成功 → EventBridge に SUCCEEDED を送信
-      # -------------------------
-      - name: Send SUCCEEDED event to EventBridge
-        if: steps.my_test_step.outcome == 'success'
-        run: |
-          aws events put-events --entries '[
-            {
-              "Source": "custom.github.actions",
-              "DetailType": "GitHub Action Build State Change",
-              "Detail": "{\"build-status\":\"SUCCEEDED\",\"project-name\":\"${{ github.event.repository.name }}\"}",
-              "EventBusName": "default"
-            }
-          ]'
-
       # -------------------------
       # ③-2 テスト失敗 → EventBridge に FAILED を送信
       # -------------------------
@@ -92,3 +63,85 @@ jobs:
                 "EventBusName": "default"
               }
             ]'
+
+             
+  # ============================================================
+  # ④ 手動承認ステージ（あなた自身が承認者）
+  # ============================================================
+  manual-approval:
+    needs: deploy
+    runs-on: ubuntu-latest
+    if: needs.deploy.outputs.test_outcome == 'success'
+    environment:
+      name: production   # ← GitHub Environment（承認者はあなた）
+    steps:
+      - name: Waiting for approval
+        run: echo "TEST成功 → 承認待ちです"
+
+  # ============================================================
+  # ⑤ 承認後に EventBrin
+  # ============================================================
+      
+        # -------------------------
+      # ⑴ テスト成功時のみ function.zip を作成
+      # -------------------------
+      - name: Create Lambda package
+        if: needs.deploy.outputs.test_outcome == 'success'
+        run: |
+          zip -r function.zip index.js node_modules
+
+      # -------------------------
+      # ② function.zip を S3 にアップロード
+      # -------------------------
+      - name: Upload Lambda package to S3
+        if: needs.deploy.outputs.test_outcome == 'success'
+        run: |
+          aws s3 cp function.zip \
+            s3://${{ secrets.S3_DEPLOY_BUCKET }}/lambda/function.zip 
+      
+      # -------------------------
+      # ③テスト成功 → EventBridge に SUCCEEDED を送信
+      # -------------------------
+      - name: Send SUCCEEDED event to EventBridge
+        run: |
+          aws events put-events --entries '[
+            {
+              "Source": "custom.github.actions",
+              "DetailType": "GitHub Action Approval State Change",
+              "Detail": "{\"approval-status\":\"SUCCEEDED\",\"project-name\":\"${{ github.event.repository.name }}\"}",
+              "EventBusName": "default"
+            }
+          ]'
+
+
+  # ============================================================
+  # ⑤ 承認NG → EventBridge に REJECTED を送信
+  # ============================================================
+  approval-rejected:
+    needs: manual-approval
+    if: failure()   # ← manual-approval が Reject された場合
+    runs-on: ubuntu-latest
+    steps:
+    - name: Get reject user
+      id: get_reviewer
+      run: |
+        curl -s \
+          -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+          -H "Accept: application/vnd.github+json" \
+          https://api.github.com/repos/${{ github.repository }}/environments/production/deployments \
+          > deployments.json
+
+        # 最新のレビュー情報を抽出
+        reviewer=$(jq -r '.[0].reviewers[0].user.login' deployments.json)
+        echo "reviewer=$reviewer" >> $GITHUB_OUTPUT
+      
+    - name: Send REJECTED event to EventBridge
+      run: |
+          aws events put-events --entries '[
+            {
+              "Source": "custom.github.actions",
+              "DetailType": "GitHub Action Approval State Change",
+              "Detail": "{\"approval-status\":\"REJECTED\",\"rejected-by\":\"${{ steps.get_reviewer.outputs.reviewer }}\",\"project-name\":\"${{ github.event.repository.name }}\"}",
+              "EventBusName": "default"
+            }
+          ]'
