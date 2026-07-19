@@ -122,27 +122,32 @@ jobs:
     if: failure()   # ← manual-approval が Reject された場合
     runs-on: ubuntu-latest
     steps:
-    - name: Get reject user
-      id: get_reviewer
-      run: |
-        curl -s \
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      - name: Get reject user
+        id: get_reviewer
+        run: |
+          curl -s \
           -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
           -H "Accept: application/vnd.github+json" \
           https://api.github.com/repos/${{ github.repository }}/environments/production/deployments \
           > deployments.json
 
-        reviewer=$(jq -r '
+          reviewer=$(jq -r '
           if type=="array" then
             .[0].reviewers[0].user.login
           else
             .reviewers[0].user.login
           end
-        ' deployments.json)
+          ' deployments.json)
 
-        echo "reviewer=$reviewer" >> $GITHUB_OUTPUT
+          echo "reviewer=$reviewer" >> $GITHUB_OUTPUT
       
-    - name: Send REJECTED event to EventBridge
-      run: |
+      - name: Send REJECTED event to EventBridge
+        run: |
           aws events put-events --entries '[
             {
               "Source": "custom.github.actions",
