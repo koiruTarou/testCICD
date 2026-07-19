@@ -147,7 +147,7 @@ jobs:
             {
               "Source": "custom.github.actions",
               "DetailType": "GitHub Action Approval State Change",
-              "Detail": "{\"approval-status\":\"REJECTED\",\"rejected-by\":\"${{ steps.get_reviewer.outputs.reviewer }}\",\"project-name\":\"${{ github.event.repository.name }}\"}",
+              "Detail": "{\"approval-status\": \"REJECTED\", \"project-name\": \"${{ github.event.repository.name }}\"}",
               "EventBusName": "default"
             }
           ]'
