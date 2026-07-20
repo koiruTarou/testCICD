@@ -140,16 +140,6 @@ jobs:
             https://api.github.com/repos/${{ github.repository }}/environments/production/deployments \
             > reviews.json
 
-              
-      - name: Fetch environment deployments
-        run: |
-          curl -s \
-            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/${{ github.repository }}/environments/production/deployments \
-            > reviews.json
-
-
       - name: Extract reviewer
         id: get_reviewer
         run: |
