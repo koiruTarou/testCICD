@@ -114,6 +114,8 @@ jobs:
           ]'
 
 
+  
+
   # ============================================================
   # ⑤ 承認NG → EventBridge に REJECTED を送信
   # ============================================================
@@ -134,15 +136,12 @@ jobs:
           -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
           -H "Accept: application/vnd.github+json" \
           https://api.github.com/repos/${{ github.repository }}/environments/production/deployments \
-          > deployments.json
+          > reviews.json
 
+          # 状態が「rejected」になっているレビューからユーザー名を取得
           reviewer=$(jq -r '
-          if type=="array" then
-            .[0].reviewers[0].user.login
-          else
-            .reviewers[0].user.login
-          end
-          ' deployments.json)
+            map(select(.state == "rejected")) | .[0].user.login
+          ' reviews.json)
 
           echo "reviewer=$reviewer" >> $GITHUB_OUTPUT
       
