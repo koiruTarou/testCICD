@@ -111,10 +111,7 @@ jobs:
               "Detail": "{\"approval-status\":\"SUCCEEDED\",\"project-name\":\"${{ github.event.repository.name }}\"}",
               "EventBusName": "default"
             }
-          ]'
-
-
-  
+          ]' 
 
   # ============================================================
   # ⑤ 承認NG → EventBridge に REJECTED を送信
@@ -131,33 +128,13 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ secrets.AWS_REGION }}
 
- 
-      - name: Fetch environment deployments
-        run: |
-          curl -s \
-            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/vnd.github+json" \
-            https://github.com{{ github.repository }}/actions/runs/${{ github.run_id }}/approvals \
-            > reviews.json
-
-      - name: Extract reviewer
-        id: get_reviewer
-        run: |
-          # approvals.json から最初のレビュー担当者のユーザー名を抽出
-          reviewer=$(jq -r '.[0].user.login' approvals.json)
-
-          if [ -z "$reviewer" ] || [ "$reviewer" = "null" ]; then
-            reviewer="unknown"
-          fi
-          echo "reviewer=$reviewer" >> $GITHUB_OUTPUT
-
       - name: Send REJECTED event to EventBridge
         run: |
           aws events put-events --entries '[
             {
               "Source": "custom.github.actions",
               "DetailType": "GitHub Action Approval State Change",
-              "Detail": "{\"approval-status\": \"REJECTED\",\"rejected-by\":\"${{ steps.get_reviewer.outputs.reviewer }}\",\"project-name\":\"${{ github.event.repository.name }}\"}",
+              "Detail": "{\"approval-status\": \"REJECTED\",\"project-name\":\"${{ github.event.repository.name }}\"}",
               "EventBusName": "default"
             }
           ]'
