@@ -140,7 +140,11 @@ jobs:
 
           # 状態が「rejected」になっているレビューからユーザー名を取得
           reviewer=$(jq -r '
-            map(select(.state == "rejected")) | .[0].user.login
+            if type=="array" then
+              .[].reviewers[] | select(.state == "rejected") | .user.login
+            else
+              .reviewers[] | select(.state == "rejected") | .user.login
+            end
           ' reviews.json)
 
           echo "reviewer=$reviewer" >> $GITHUB_OUTPUT
