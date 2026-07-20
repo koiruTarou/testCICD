@@ -123,32 +123,48 @@ jobs:
     needs: manual-approval
     if: failure()   # ← manual-approval が Reject された場合
     runs-on: ubuntu-latest
+
     steps:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v5
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ secrets.AWS_REGION }}
-      - name: Get reject user
-        id: get_reviewer
+
+ 
+      - name: Fetch environment deployments
         run: |
           curl -s \
-          -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-          -H "Accept: application/vnd.github+json" \
-          https://api.github.com/repos/${{ github.repository }}/environments/production/deployments \
-          > reviews.json
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${{ github.repository }}/environments/production/deployments \
+            > reviews.json
 
-          # 状態が「rejected」になっているレビューからユーザー名を取得
+              
+      - name: Fetch environment deployments
+        run: |
+          curl -s \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${{ github.repository }}/environments/production/deployments \
+            > reviews.json
+
+
+      - name: Extract reviewer
+        id: get_reviewer
+        run: |
           reviewer=$(jq -r '
-            if type=="array" then
-              .[].reviewers[] | select(.state == "rejected") | .user.login
-            else
-              .reviewers[] | select(.state == "rejected") | .user.login
-            end
+            (.. | objects | .reviewers? // [])
+            | map(select(.state == "rejected"))
+            | .[0].user.login
           ' reviews.json)
 
+          if [ -z "$reviewer" ] || [ "$reviewer" = "null" ]; then
+            reviewer="unknown"
+          fi
+
           echo "reviewer=$reviewer" >> $GITHUB_OUTPUT
-      
+
       - name: Send REJECTED event to EventBridge
         run: |
           aws events put-events --entries '[
@@ -159,3 +175,4 @@ jobs:
               "EventBusName": "default"
             }
           ]'
+
