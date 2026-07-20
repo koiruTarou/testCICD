@@ -75,14 +75,27 @@ jobs:
     environment:
       name: production   # ← GitHub Environment（承認者はあなた）
     steps:
+
       - name: Waiting for approval
         run: echo "TEST成功 → 承認待ちです"
 
   # ============================================================
   # ⑤ 承認後に EventBrin
   # ============================================================
-      
-        # -------------------------
+  
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Checkout source
+        uses: actions/checkout@v5
+
+      - name: Install dependencies
+        run: npm install
+         
+      # -------------------------
       # ⑴ テスト成功時のみ function.zip を作成
       # -------------------------
       - name: Create Lambda package
