@@ -10,12 +10,13 @@ permissions:
   contents: read
 
 jobs:
+  # ============================================================
+  # ① テスト実行ステージ
+  # ============================================================
   deploy:
     runs-on: ubuntu-latest
-
     outputs:
       test_outcome: ${{ steps.my_test_step.outcome }}
-
     steps:
       - name: Checkout source
         uses: actions/checkout@v5
@@ -26,9 +27,6 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      # -------------------------
-      # ① テスト実行
-      # -------------------------
       - name: Install dependencies
         run: npm install
 
@@ -40,49 +38,46 @@ jobs:
         id: my_test_step 
         continue-on-error: true
 
-      # -------------------------
-      # ② junit.xml を S3 にアップロード
-      # -------------------------
       - name: Upload test report to S3
         if: always()
         run: |
           aws s3 cp test-reports/junit.xml \
             s3://${{ secrets.S3_REPORT_BUCKET }}/test-reports/${{ github.run_id }}.xml
       
-      # -------------------------
-      # ③-2 テスト失敗 → EventBridge に FAILED を送信
-      # -------------------------
+      # テスト失敗 → EventBridge に FAILED を送信
       - name: Send FAILED event to EventBridge
         if: steps.my_test_step.outcome == 'failure'          
         run: |
-            aws events put-events --entries '[
-              {
-                "Source": "custom.github.actions",
-                "DetailType": "GitHub Action Build State Change",
-                "Detail": "{\"build-status\": \"FAILED\", \"project-name\": \"${{ github.event.repository.name }}\", \"report-url\": \"https://s3.console.aws.amazon.com/s3/object/${{ secrets.S3_REPORT_BUCKET }}/test-reports/${{ github.run_id }}.xml?region=ap-northeast-1\"}",
-                "EventBusName": "default"
-              }
-            ]'
+          aws events put-events --entries '[
+            {
+              "Source": "custom.github.actions",
+              "DetailType": "GitHub Action Build State Change",
+              "Detail": "{\"build-status\": \"FAILED\", \"project-name\": \"${{ github.event.repository.name }}\", \"report-url\": \"https://amazon.com{{ secrets.S3_REPORT_BUCKET }}/test-reports/${{ github.run_id }}.xml?region=ap-northeast-1\"}",
+              "EventBusName": "default"
+            }
+          ]'
 
-             
   # ============================================================
-  # ④ 手動承認ステージ（あなた自身が承認者）
+  # ② 手動承認ステージ（純粋な待ち受けジョブ）
   # ============================================================
   manual-approval:
     needs: deploy
     runs-on: ubuntu-latest
     if: needs.deploy.outputs.test_outcome == 'success'
     environment:
-      name: production   # ← GitHub Environment（承認者はあなた）
+      name: production   # ← 承認をここで受ける
     steps:
-
       - name: Waiting for approval
-        run: echo "TEST成功 → 承認待ちです"
+        run: echo "TEST成功 → 承認待ちです。"
 
   # ============================================================
-  # ⑤ 承認後に EventBrin
+  # ③ 承認OK（SUCCEEDED）時の処理
   # ============================================================
-  
+  approval-succeeded:
+    needs: manual-approval
+    if: success()   # ← manual-approval が Approve された場合
+    runs-on: ubuntu-latest
+    steps:
       - name: Checkout source
         uses: actions/checkout@v5
 
@@ -95,26 +90,14 @@ jobs:
       - name: Install dependencies
         run: npm install
          
-      # -------------------------
-      # ⑴ テスト成功時のみ function.zip を作成
-      # -------------------------
       - name: Create Lambda package
-        if: needs.deploy.outputs.test_outcome == 'success'
-        run: |
-          zip -r function.zip index.js node_modules
+        run: zip -r function.zip index.js node_modules
 
-      # -------------------------
-      # ② function.zip を S3 にアップロード
-      # -------------------------
       - name: Upload Lambda package to S3
-        if: needs.deploy.outputs.test_outcome == 'success'
         run: |
           aws s3 cp function.zip \
             s3://${{ secrets.S3_DEPLOY_BUCKET }}/lambda/function.zip 
       
-      # -------------------------
-      # ③テスト成功 → EventBridge に SUCCEEDED を送信
-      # -------------------------
       - name: Send SUCCEEDED event to EventBridge
         run: |
           aws events put-events --entries '[
@@ -127,13 +110,12 @@ jobs:
           ]' 
 
   # ============================================================
-  # ⑤ 承認NG → EventBridge に REJECTED を送信
+  # ④ 承認NG（REJECTED）時の処理
   # ============================================================
   approval-rejected:
     needs: manual-approval
     if: failure()   # ← manual-approval が Reject された場合
     runs-on: ubuntu-latest
-
     steps:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v5
@@ -151,4 +133,3 @@ jobs:
               "EventBusName": "default"
             }
           ]'
-
